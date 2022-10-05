@@ -20,8 +20,8 @@ static void creaMazzoLuce(struct Carta **mazzo, int n, struct Carta *ultimaCarta
 static void stampaMazzo(struct Carta **mazzo);
 static void cancellaCarta(struct Carta **mazzo, struct Carta *ultimaCarta);
 static void stampaTipo(int valore);
-static void creaMano(struct Carta **mazzo, struct Carta *mano[], struct Carta *ultimaCarta); //andrà poi richiamata nella funzione 'imposta_gioco()'
-static void stampaMano(struct Carta *mano[]);
+static void creaMano(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta); //andrà poi richiamata nella funzione 'imposta_gioco()'
+static void stampaMano(struct Carta mano[]);
 static void creaCampo(struct Carta **campo[]);
 static void stampaCampo(struct Carta **campo[]);
 
@@ -141,29 +141,20 @@ static void stampaMazzo(struct Carta **mazzo){
 }
 
 static void cancellaCarta(struct Carta **mazzo, struct Carta *ultimaCarta){
-printf("ultima %p\n", ultimaCarta);
+
   if(*mazzo == NULL){
     printf("Non ci sono carte nel mazzo\n");
   }else{
     struct Carta *cartaPrev = NULL;
     struct Carta *cartaScan = *mazzo;
-    printf("cazzo %p\n", *mazzo);
-    printf("carta succ %p\n", cartaScan);
 
-      do{
-        //cartaScan = cartaScan->punti_vita;
-        printf("successivo %d\n", cartaScan->punti_vita);
-        if((cartaScan->successivo) == ultimaCarta){ //andiamo a cercare la carta prima dell'ultima
-          cartaPrev = cartaScan;
-          break;
-        }else{
-          cartaScan = cartaScan->successivo;
-        }
-      }while((cartaScan->successivo) != NULL);
+    while((cartaScan->successivo) != ultimaCarta){
+      cartaScan = cartaScan->successivo;
+    }
 
-      free(cartaPrev->successivo); //libero la memoria allocata dall'ultima carta
-      cartaPrev->successivo = NULL; //cartaPrev diventa l'ultima carta (non c'è alcun nodo dopo)
-      ultimaCarta = cartaPrev;//cartaPrev diventa la NUOVA ultima carta
+    free(cartaScan->successivo);
+    cartaScan->successivo = NULL;
+    ultimaCarta = cartaScan;
     }
 }
 
@@ -191,36 +182,32 @@ static void stampaTipo(int valore){
   }
 }
 
-static void creaMano(struct Carta **mazzo, struct Carta *mano[], struct Carta *ultimaCarta){
-
-  struct Carta *sentinella = *mazzo;
+static void creaMano(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta){
 
   for(int i = 0; i < 6; i++){
+    struct Carta *sentinella = *mazzo;
     while((sentinella->successivo) != NULL){
       sentinella = sentinella->successivo;
       ultimaCarta = sentinella;
     }
 
-printf("ultimacrea %p\n", ultimaCarta);
     mano[i] = sentinella;
-    free(ultimaCarta);
-    ultimaCarta = sentinella;
-    printf("mano %p\n", mano[i]);
-    //cancellaCarta(&mazzo, ultimaCarta);
-    printf("cancella\n");
+
+    printf("\ninizio mano\n" );
+    printf("Tipo: ");
+    stampaTipo(mano.tipo[i]);
+    printf("  Punti vita: %d\n", mano.punti_vita[i]);
+    cancellaCarta(mazzo, ultimaCarta);
   }
 }
 
-static void stampaMano(struct Carta *mano[]){
+static void stampaMano(struct Carta mano[]){
 
-  struct Carta *sentinella;
-
+    printf("\ninizio stampa mano\n");
   for(int i = 0; i < 6; i++){
-    sentinella = mano[i];
-    printf("Array %p\n", mano[i]);
     printf("Tipo: ");
-    stampaTipo(sentinella->tipo);
-    printf("  Punti vita: %d\n", &sentinella->punti_vita);
+    stampaTipo(mano[i]->tipo);
+    printf("  Punti vita: %d\n", mano[i]->punti_vita);
   }
 }
 
@@ -289,14 +276,14 @@ void imposta_gioco(){
 
   creaMano(&mazzo1, mano1, ultimaCarta1);
   creaMano(&mazzo2, mano2, ultimaCarta2);
-  creaCampo(campo1);
-  creaCampo(campo2);
+  //creaCampo(campo1);
+  //creaCampo(campo2);
 }
 
 void combatti(){
-  printf("Stampa della mano del primo giocatore\n");
+  printf("\nStampa della mano del primo giocatore\n");
   stampaMano(mano1);
 
-  printf("Stampa della mano del secondo giocatore\n");
+  printf("\nStampa della mano del secondo giocatore\n");
   stampaMano(mano2);
 }
