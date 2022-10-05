@@ -14,14 +14,14 @@ static struct Carta *campo2[4];
 
 static int probabilitaTipo();
 static int puntiVita(int i);
-static void creaMazzoTenebre(struct Carta *mazzo, int n, struct Carta *ultimaCarta);
-static void creaMazzoVita(struct Carta *mazzo, int n, struct Carta *ultimaCarta);
-static void creaMazzoLuce(struct Carta *mazzo, int n, struct Carta *ultimaCarta);
+static void creaMazzoTenebre(struct Carta **mazzo, int n, struct Carta *ultimaCarta);
+static void creaMazzoVita(struct Carta **mazzo, int n, struct Carta *ultimaCarta);
+static void creaMazzoLuce(struct Carta **mazzo, int n, struct Carta *ultimaCarta);
 static void stampaMazzo(struct Carta **mazzo);
 static void cancellaCarta(struct Carta **mazzo, struct Carta *ultimaCarta);
 static void stampaTipo(int valore);
-static void creaMano(struct Carta **mazzo, struct Carta **mano[], struct Carta *ultimaCarta); //andrà poi richiamata nella funzione 'imposta_gioco()'
-static void stampaMano(struct Carta **mano[]);
+static void creaMano(struct Carta **mazzo, struct Carta *mano[], struct Carta *ultimaCarta); //andrà poi richiamata nella funzione 'imposta_gioco()'
+static void stampaMano(struct Carta *mano[]);
 static void creaCampo(struct Carta **campo[]);
 static void stampaCampo(struct Carta **campo[]);
 
@@ -57,9 +57,12 @@ static int puntiVita(int i){
   }
 }
 
-static void creaMazzoTenebre(struct Carta *mazzo, int n, struct Carta *ultimaCarta){
+static void creaMazzoTenebre(struct Carta **mazzo, int n, struct Carta *ultimaCarta){
 
+  //RICORDA!! IL CONTENUTO E LA LOCAZIONE DI MEMORIA
   for(int i = 0; i < n; i++){
+    //punto ad una locazione appena creata che non contiene nulla ma che avrà
+    //come "campi" quelli di struct Carta
     struct Carta *nuovaCarta =(struct Carta*) malloc(sizeof(struct Carta));
       nuovaCarta->tipo = probabilitaTipo();  //verranno generati numeri da 0 a 3
       if(nuovaCarta->tipo == 2){
@@ -68,8 +71,9 @@ static void creaMazzoTenebre(struct Carta *mazzo, int n, struct Carta *ultimaCar
       nuovaCarta->punti_vita = puntiVita(i);
       nuovaCarta->successivo = NULL;
 
-      if(mazzo == NULL){
-          mazzo = nuovaCarta;
+      if(*mazzo == NULL){
+          //inserisco in mazzo la locazione di memoria appena creata di nuova carta
+          *mazzo = nuovaCarta;
           ultimaCarta = nuovaCarta;
       }else{
         ultimaCarta->successivo = nuovaCarta;
@@ -78,7 +82,7 @@ static void creaMazzoTenebre(struct Carta *mazzo, int n, struct Carta *ultimaCar
     }
 }
 
-static void creaMazzoVita(struct Carta *mazzo, int n, struct Carta *ultimaCarta){
+static void creaMazzoVita(struct Carta **mazzo, int n, struct Carta *ultimaCarta){
 
   for(int i = 0; i < n; i++){
     struct Carta *nuovaCarta =(struct Carta*) malloc(sizeof(struct Carta));
@@ -89,8 +93,8 @@ static void creaMazzoVita(struct Carta *mazzo, int n, struct Carta *ultimaCarta)
       nuovaCarta->punti_vita = puntiVita(i);
       nuovaCarta->successivo = NULL;
 
-      if(mazzo == NULL){
-          mazzo = nuovaCarta;
+      if(*mazzo == NULL){
+          *mazzo = nuovaCarta;
           ultimaCarta = nuovaCarta;
       }else{
         ultimaCarta->successivo = nuovaCarta;
@@ -99,7 +103,7 @@ static void creaMazzoVita(struct Carta *mazzo, int n, struct Carta *ultimaCarta)
   }
 }
 
-static void creaMazzoLuce(struct Carta *mazzo, int n, struct Carta *ultimaCarta){
+static void creaMazzoLuce(struct Carta **mazzo, int n, struct Carta *ultimaCarta){
 
   for(int i = 0; i < n; i++){
     struct Carta *nuovaCarta =(struct Carta*) malloc(sizeof(struct Carta));
@@ -110,8 +114,8 @@ static void creaMazzoLuce(struct Carta *mazzo, int n, struct Carta *ultimaCarta)
       nuovaCarta->punti_vita = puntiVita(i);
       nuovaCarta->successivo = NULL;
 
-      if(mazzo == NULL){
-          mazzo = nuovaCarta;
+      if(*mazzo == NULL){
+          *mazzo = nuovaCarta;
           ultimaCarta = nuovaCarta;
       }else{
         ultimaCarta->successivo = nuovaCarta;
@@ -121,7 +125,8 @@ static void creaMazzoLuce(struct Carta *mazzo, int n, struct Carta *ultimaCarta)
 }
 
 static void stampaMazzo(struct Carta **mazzo){
-  if(mazzo == NULL){
+
+  if(*mazzo == NULL){
     printf("Non ci sono carte nel mazzo\n");
   }else{
     struct Carta *sentinella = *mazzo;
@@ -136,14 +141,18 @@ static void stampaMazzo(struct Carta **mazzo){
 }
 
 static void cancellaCarta(struct Carta **mazzo, struct Carta *ultimaCarta){
-
+printf("ultima %p\n", ultimaCarta);
   if(*mazzo == NULL){
     printf("Non ci sono carte nel mazzo\n");
   }else{
     struct Carta *cartaPrev = NULL;
     struct Carta *cartaScan = *mazzo;
+    printf("cazzo %p\n", *mazzo);
+    printf("carta succ %p\n", cartaScan);
 
       do{
+        //cartaScan = cartaScan->punti_vita;
+        printf("successivo %d\n", cartaScan->punti_vita);
         if((cartaScan->successivo) == ultimaCarta){ //andiamo a cercare la carta prima dell'ultima
           cartaPrev = cartaScan;
           break;
@@ -182,24 +191,30 @@ static void stampaTipo(int valore){
   }
 }
 
-static void creaMano(struct Carta **mazzo, struct Carta **mano[], struct Carta *ultimaCarta){
+static void creaMano(struct Carta **mazzo, struct Carta *mano[], struct Carta *ultimaCarta){
+
   struct Carta *sentinella = *mazzo;
 
   for(int i = 0; i < 6; i++){
-    printf("Ultima PV: %p\n", ultimaCarta);
-    while((sentinella->successivo) != ultimaCarta){
+    while((sentinella->successivo) != NULL){
       sentinella = sentinella->successivo;
+      ultimaCarta = sentinella;
     }
-    printf("Sentinella PV: %d\n", sentinella->punti_vita);
-    stampaTipo(sentinella->tipo);
-    mano[i] = sentinella;
-    cancellaCarta(&mazzo, ultimaCarta);
 
+printf("ultimacrea %p\n", ultimaCarta);
+    mano[i] = sentinella;
+    free(ultimaCarta);
+    ultimaCarta = sentinella;
+    printf("mano %p\n", mano[i]);
+    //cancellaCarta(&mazzo, ultimaCarta);
+    printf("cancella\n");
   }
 }
 
-static void stampaMano(struct Carta **mano[]){
+static void stampaMano(struct Carta *mano[]){
+
   struct Carta *sentinella;
+
   for(int i = 0; i < 6; i++){
     sentinella = mano[i];
     printf("Array %p\n", mano[i]);
@@ -241,39 +256,38 @@ void imposta_gioco(){
 
   switch (giocatore1.classe) {
     case 0:
-      creaMazzoTenebre(mazzo1, n, ultimaCarta1);
+      creaMazzoTenebre(&mazzo1, n, ultimaCarta1);
       break;
 
     case 1:
-      creaMazzoVita(mazzo1, n, ultimaCarta1);
+      creaMazzoVita(&mazzo1, n, ultimaCarta1);
       break;
 
     case 2:
-      creaMazzoLuce(mazzo1, n, ultimaCarta1);
+      creaMazzoLuce(&mazzo1, n, ultimaCarta1);
       break;
   }
-printf("PIPPO DOPO IL PRIMO SWITCH\n");
+
   switch (giocatore2.classe) {
     case 0:
-      creaMazzoTenebre(mazzo2, n, ultimaCarta2);
+      creaMazzoTenebre(&mazzo2, n, ultimaCarta2);
       break;
 
     case 1:
-      creaMazzoVita(mazzo2, n, ultimaCarta2);
+      creaMazzoVita(&mazzo2, n, ultimaCarta2);
       break;
 
     case 2:
-      creaMazzoLuce(mazzo2, n, ultimaCarta2);
+      creaMazzoLuce(&mazzo2, n, ultimaCarta2);
       break;
   }
 
-printf("PIPPO IN IMPOSTA GIOCO\n");
   printf("\nNome del giocatore: %s\n", giocatore1.nome);
   stampaMazzo(&mazzo1);
   printf("\nNome del giocatore: %s\n", giocatore2.nome);
   stampaMazzo(&mazzo2);
 
-  creaMano(&mazzo1, mano1, &ultimaCarta1);
+  creaMano(&mazzo1, mano1, ultimaCarta1);
   creaMano(&mazzo2, mano2, ultimaCarta2);
   creaCampo(campo1);
   creaCampo(campo2);
