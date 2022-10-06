@@ -21,9 +21,10 @@ static void stampaMazzo(struct Carta **mazzo);
 static void cancellaCarta(struct Carta **mazzo, struct Carta *ultimaCarta);
 static void stampaTipo(int valore);
 static void creaMano(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta); //andrà poi richiamata nella funzione 'imposta_gioco()'
+static void pesca(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta);
 static void stampaMano(struct Carta mano[]);
-static void creaCampo(struct Carta **campo[]);
-static void stampaCampo(struct Carta **campo[]);
+static void creaCampo(struct Carta campo[]);
+static void stampaCampo(struct Carta campo[]);
 
 static int probabilitaTipo(){
 
@@ -183,7 +184,6 @@ static void stampaTipo(int valore){
 }
 
 static void creaMano(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta){
-
   for(int i = 0; i < 6; i++){
     struct Carta *sentinella = *mazzo;
     while((sentinella->successivo) != NULL){
@@ -191,30 +191,76 @@ static void creaMano(struct Carta **mazzo, struct Carta mano[], struct Carta *ul
       ultimaCarta = sentinella;
     }
 
-    mano[i] = sentinella;
+    mano[i].tipo = sentinella->tipo;
+    mano[i].punti_vita = sentinella->punti_vita;
 
-    printf("\ninizio mano\n" );
-    printf("Tipo: ");
-    stampaTipo(mano.tipo[i]);
-    printf("  Punti vita: %d\n", mano.punti_vita[i]);
     cancellaCarta(mazzo, ultimaCarta);
+  }
+}
+
+static void pesca(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta){
+  //domanda essendo una pesca e non un creamazzo, devo controllare se il
+  //mazzo sia già stato creato??
+  if(mano == NULL){
+    creaMano(&mazzo, mano, ultimaCarta);
+  }
+
+  //ispeziono finché non trovo una posizione della mano libera. A quel punto
+  //pesco la carta dal mazzo e l'aggiungo nella poszione vuota. Fatto ciò la
+  //dealloco dalla memoria, togliendola conseguentemente dal mazzo
+  for(int i = 0; i < 6; i++){
+    if(mano[i] == NULL){
+      struct Carta *sentinella = *mazzo;
+      while((sentinella->successivo) != NULL){
+        sentinella = sentinella->successivo;
+        ultimaCarta = sentinella;
+      }
+
+      mano[i].tipo = sentinella->tipo;
+      mano[i].punti_vita = sentinella->punti_vita;
+
+      cancellaCarta(mazzo, ultimaCarta);
+
+      //affinché io possa pescare una sola carta, e riempire un solo buco
+      //dell'array, alla fine della provedura devo fare un break così esco dal for??
+      //ovvero trovo il primo elemento libero nell'array e riempo solo quello.
+    }
   }
 }
 
 static void stampaMano(struct Carta mano[]){
 
-    printf("\ninizio stampa mano\n");
   for(int i = 0; i < 6; i++){
     printf("Tipo: ");
-    stampaTipo(mano[i]->tipo);
-    printf("  Punti vita: %d\n", mano[i]->punti_vita);
+    stampaTipo(mano[i].tipo);
+    printf("  Punti vita: %d\n", mano[i].punti_vita);
   }
 }
 
-static void creaCampo(struct Carta **campo[]){
-  for(int j = 0; j < 4; j++){
-    campo[j] = NULL;
+static void creaCampo(struct Carta campo[], struct Carta mano[]){
+  int n = 0;
+  //controllo se siamo al primo round e quindi non ci sono carte sul campo
+  //(aka devo giocare 4 carte)
+  if(*campo == NULL){
+    printf("Scegliere le carte da mettere in campo\n");
+    for(int j = 0; j < 4; j++){
+      printf("Gli indici delle carte in mano vanno da 1 a 6\nSelezionare la posizione della carta nella mano: %d\n");
+      scanf("%d\n", n);
+      if((n >= 1) && (n<=6)){
+        //diiminuisco di 1 n, poiché l'indici dell'array va da 0 a 5
+        campo[j].tipo = mano[n-1].tipo;
+        campo[j].punti_vita = mano[n-1].punti_vita;
+
+        //come faccio a deallocare la carta dalla mano?
+        //basta fare free(mano[n-1]) ??
+      }else{
+        printf("Si è scelto un indice al di fuori del range\n");
+      }
+    }
+  }else{
+    //devo buttare una sola carta sul Campo
   }
+
 }
 
 static void stampaCampo(struct Carta **campo[]){
@@ -269,21 +315,24 @@ void imposta_gioco(){
       break;
   }
 
-  printf("\nNome del giocatore: %s\n", giocatore1.nome);
+//Da decidere se far vedere il mazzo oppure solamente la mano di ciascun giocatore
+  /*printf("\nNome del giocatore: %s\n", giocatore1.nome);
   stampaMazzo(&mazzo1);
   printf("\nNome del giocatore: %s\n", giocatore2.nome);
-  stampaMazzo(&mazzo2);
+  stampaMazzo(&mazzo2);*/
 
   creaMano(&mazzo1, mano1, ultimaCarta1);
   creaMano(&mazzo2, mano2, ultimaCarta2);
-  //creaCampo(campo1);
-  //creaCampo(campo2);
-}
 
-void combatti(){
   printf("\nStampa della mano del primo giocatore\n");
   stampaMano(mano1);
 
   printf("\nStampa della mano del secondo giocatore\n");
   stampaMano(mano2);
+  //creaCampo(campo1);
+  //creaCampo(campo2);
+}
+
+void combatti(){
+
 }
