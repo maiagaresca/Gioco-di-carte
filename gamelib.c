@@ -21,10 +21,13 @@ static void stampaMazzo(struct Carta **mazzo);
 static void cancellaCarta(struct Carta **mazzo, struct Carta *ultimaCarta);
 static void stampaTipo(int valore);
 static void creaMano(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta); //andrà poi richiamata nella funzione 'imposta_gioco()'
-static void pesca(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta);
 static void stampaMano(struct Carta mano[]);
-static void creaCampo(struct Carta campo[]);
+static void pesca(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta);
+static void giocaCarta(struct Carta campo[], struct Carta mano[]);
+static void giocaCreatura(struct Carta campo[], struct Carta mano[], struct Carta *sceltaCarta);
 static void stampaCampo(struct Carta campo[]);
+static void attacca();
+static void passa();
 
 static int probabilitaTipo(){
 
@@ -198,18 +201,20 @@ static void creaMano(struct Carta **mazzo, struct Carta mano[], struct Carta *ul
   }
 }
 
-static void pesca(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta){
-  //domanda essendo una pesca e non un creamazzo, devo controllare se il
-  //mazzo sia già stato creato??
-  if(mano == NULL){
-    creaMano(&mazzo, mano, ultimaCarta);
-  }
+static void stampaMano(struct Carta mano[]){
 
-  //ispeziono finché non trovo una posizione della mano libera. A quel punto
-  //pesco la carta dal mazzo e l'aggiungo nella poszione vuota. Fatto ciò la
-  //dealloco dalla memoria, togliendola conseguentemente dal mazzo
   for(int i = 0; i < 6; i++){
-    if(mano[i] == NULL){
+    printf("Tipo: ");
+    stampaTipo(mano[i].tipo);
+    printf("  Punti vita: %d\n", mano[i].punti_vita);
+  }
+}
+
+/*static void pesca(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta){
+
+  for(int i = 0; i < 6; i++){
+    if(mano[i] == NULL){ //controllo con NULL perché una volta che gioco la
+                        //carta, poi lo slot libero lo imposto a 'NULL'
       struct Carta *sentinella = *mazzo;
       while((sentinella->successivo) != NULL){
         sentinella = sentinella->successivo;
@@ -220,50 +225,89 @@ static void pesca(struct Carta **mazzo, struct Carta mano[], struct Carta *ultim
       mano[i].punti_vita = sentinella->punti_vita;
 
       cancellaCarta(mazzo, ultimaCarta);
-
-      //affinché io possa pescare una sola carta, e riempire un solo buco
-      //dell'array, alla fine della provedura devo fare un break così esco dal for??
-      //ovvero trovo il primo elemento libero nell'array e riempo solo quello.
+      break;
     }
   }
-}
+}*/
 
-static void stampaMano(struct Carta mano[]){
-
-  for(int i = 0; i < 6; i++){
-    printf("Tipo: ");
-    stampaTipo(mano[i].tipo);
-    printf("  Punti vita: %d\n", mano[i].punti_vita);
-  }
-}
-
-static void creaCampo(struct Carta campo[], struct Carta mano[]){
+static void giocaCarta(struct Carta campo[], struct Carta mano[]){
+  /*in questo caso il giocatore sceglie una delle proprie carte e sceglie un
+  bersaglio su cui giocarla: la carta di tipo rimuovi_creatura può avere come
+  bersaglio una delle creature del nemico sul campo, mentre infliggi_danno può
+  essere giocata contro una creatura del nemico sul campo o direttamente
+  contro il mago nemico , guarisci_danno può essere giocata a favore di sé stessi
+  oppure su una delle proprie creature. Una creatura può essere invece giocata
+  inserendola sul proprio campo. Una carta infliggi_danno infligge una danno
+  pari al numeri dei suoi punti_vita ad una creatura o al mago nemico, la
+  guarisci_danno incrementa i PV del mago o i punti_vita della creatura bersaglio,
+  la rimuovi_creatura distrugge la creatura in campo (free). Le carte giocate
+  (ad eccezione delle creature giocate) possono essere subito dopo deallocate
+  (free). Ovviamente anche le creature, quando raggiungono 0 punti_vita, sono
+  eliminate dal campo (free).*/
   int n = 0;
-  //controllo se siamo al primo round e quindi non ci sono carte sul campo
-  //(aka devo giocare 4 carte)
-  if(*campo == NULL){
-    printf("Scegliere le carte da mettere in campo\n");
-    for(int j = 0; j < 4; j++){
-      printf("Gli indici delle carte in mano vanno da 1 a 6\nSelezionare la posizione della carta nella mano: %d\n");
-      scanf("%d\n", n);
-      if((n >= 1) && (n<=6)){
-        //diiminuisco di 1 n, poiché l'indici dell'array va da 0 a 5
-        campo[j].tipo = mano[n-1].tipo;
-        campo[j].punti_vita = mano[n-1].punti_vita;
 
-        //come faccio a deallocare la carta dalla mano?
-        //basta fare free(mano[n-1]) ??
-      }else{
-        printf("Si è scelto un indice al di fuori del range\n");
-      }
+
+    printf("Scegliere le carte da mettere in campo\n");
+    printf("Gli indici delle carte in mano vanno da 0 a 5\nSelezionare la posizione della carta nella mano: %d\n");
+    scanf("%d\n", &n);
+
+    struct Carta *sceltaCarta = mano[n];
+
+    switch (mano[n].tipo) {
+      case 0: //creatura
+        giocaCreatura(campo, mano, sceltaCarta);
+        printf("carta tolta dalla mano %p\n", mano[n]);
+        break;
+
+      case 1: //rimuovi_creatura
+        //rimuovi;
+        break;
+
+      case 2: //infliggi_danno
+        //infliggi;
+        break;
+
+      case 3: //cura_danno
+        //guarisci;
+        break;
     }
-  }else{
-    //devo buttare una sola carta sul Campo
+}
+
+static void giocaCreatura(struct Carta campo[], struct Carta mano[], struct Carta *sceltaCarta){
+
+  for(int j = 0; j < 4; j++){
+    if(campo[j] == 0){
+      campo[j].tipo = sceltaCarta->tipo;
+      campo[j].punti_vita = sceltaCarta->punti_vita;
+
+      free(sceltaCarta);
+      sceltaCarta = NULL;
+
+      break;
+    }
   }
+}
+
+static void stampaCampo(struct Carta campo[]){
+  for(int j = 0; j < 4; j++){
+    if(campo[j] != 0){
+      printf("Tipo: ");
+      stampaTipo(campo[j].tipo);
+      printf("  Punti vita: %d\n",  campo[j].punti_vita);
+    }else{
+      //metto uno spazio in più per far capire che manca una carta nello slot
+      //che sto controllando
+      printf("\n----\n");
+    }
+  }
+}
+
+
+static void attacca(){
 
 }
 
-static void stampaCampo(struct Carta **campo[]){
+static void passa(){
 
 }
 
@@ -334,5 +378,30 @@ void imposta_gioco(){
 }
 
 void combatti(){
+  int scelta = 0;
 
+  printf("Cosa vuoi fare?\n '1' Per pescare una carta dal mazzo\n '2' Per giocare una carta\n");
+  printf("'3' Per attaccare\n '4' Per passare la tua mano\n La tua scelta: %d");
+  scanf("%d\n", &scelta);
+
+  switch (scelta) {
+    case 1:
+      //pesca();
+      break;
+
+    case 2:
+      giocaCarta(campo1, mazzo1);
+      break;
+
+    case 3:
+      //attaccare();
+      break;
+
+    case 4:
+      //passa();
+      break;
+
+    default:
+      printf("La scelta inserita non è nella lista\n");
+  }
 }
