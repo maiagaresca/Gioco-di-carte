@@ -3,6 +3,8 @@
 #include <time.h>
 #include "gamelib.h"
 
+static struct Mago giocatore1;
+static struct Mago giocatore2;
 static struct Carta *mazzo1 = NULL;
 struct Carta *ultimaCarta1 = NULL;
 static struct Carta *mano1[6];
@@ -20,12 +22,15 @@ static void creaMazzoLuce(struct Carta **mazzo, int n, struct Carta *ultimaCarta
 static void stampaMazzo(struct Carta **mazzo);
 static void cancellaCarta(struct Carta **mazzo, struct Carta *ultimaCarta);
 static void stampaTipo(int valore);
-static void creaMano(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta); //andrà poi richiamata nella funzione 'imposta_gioco()'
-static void stampaMano(struct Carta mano[]);
+static void creaMano(struct Carta **mazzo, struct Carta *mano[], struct Carta *ultimaCarta); //andrà poi richiamata nella funzione 'imposta_gioco()'
+static void stampaMano(struct Carta *mano[]);
 static void pesca(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta);
-static void giocaCarta(struct Carta campo[], struct Carta mano[]);
-static void giocaCreatura(struct Carta campo[], struct Carta mano[], struct Carta *sceltaCarta);
-static void stampaCampo(struct Carta campo[]);
+static void giocaCarta(struct Mago *nemico, struct Carta *campoGiocatore[], struct Carta *manoGiocatore[], struct Carta *campoNemico[], struct Carta *manoNemico[]);
+static void giocaCreatura(struct Carta *campo[], struct Carta *mano[], int n);
+static void rimuoviCreatura(struct Carta *campo[]);
+static void infliggiDanno(struct Carta *campo[], struct Mago *giocatore, int puntiVita);
+static void guarisciDanno(struct Carta *campo[], struct Mago *giocatore);
+static void stampaCampo(struct Carta *campo[]);
 static void attacca();
 static void passa();
 
@@ -156,7 +161,7 @@ static void cancellaCarta(struct Carta **mazzo, struct Carta *ultimaCarta){
       cartaScan = cartaScan->successivo;
     }
 
-    free(cartaScan->successivo);
+    //free(cartaScan->successivo);
     cartaScan->successivo = NULL;
     ultimaCarta = cartaScan;
     }
@@ -186,27 +191,35 @@ static void stampaTipo(int valore){
   }
 }
 
-static void creaMano(struct Carta **mazzo, struct Carta mano[], struct Carta *ultimaCarta){
+static void creaMano(struct Carta **mazzo, struct Carta *mano[], struct Carta *ultimaCarta){
+
   for(int i = 0; i < 6; i++){
     struct Carta *sentinella = *mazzo;
+
     while((sentinella->successivo) != NULL){
       sentinella = sentinella->successivo;
       ultimaCarta = sentinella;
     }
 
-    mano[i].tipo = sentinella->tipo;
-    mano[i].punti_vita = sentinella->punti_vita;
+    mano[i] = sentinella;
 
     cancellaCarta(mazzo, ultimaCarta);
+
   }
 }
 
-static void stampaMano(struct Carta mano[]){
+static void stampaMano(struct Carta *mano[]){
 
   for(int i = 0; i < 6; i++){
-    printf("Tipo: ");
-    stampaTipo(mano[i].tipo);
-    printf("  Punti vita: %d\n", mano[i].punti_vita);
+    if(mano[i] != NULL){
+      printf("%d", i);
+      printf(" Tipo: ");
+      stampaTipo(mano[i]->tipo);
+      printf("    Punti vita: %d\n", mano[i]->punti_vita);
+    }else{
+      printf("%d", i);
+      printf(" ----\n");
+    }
   }
 }
 
@@ -230,70 +243,148 @@ static void stampaMano(struct Carta mano[]){
   }
 }*/
 
-static void giocaCarta(struct Carta campo[], struct Carta mano[]){
-  /*in questo caso il giocatore sceglie una delle proprie carte e sceglie un
-  bersaglio su cui giocarla: la carta di tipo rimuovi_creatura può avere come
-  bersaglio una delle creature del nemico sul campo, mentre infliggi_danno può
-  essere giocata contro una creatura del nemico sul campo o direttamente
-  contro il mago nemico , guarisci_danno può essere giocata a favore di sé stessi
-  oppure su una delle proprie creature. Una creatura può essere invece giocata
-  inserendola sul proprio campo. Una carta infliggi_danno infligge una danno
-  pari al numeri dei suoi punti_vita ad una creatura o al mago nemico, la
-  guarisci_danno incrementa i PV del mago o i punti_vita della creatura bersaglio,
-  la rimuovi_creatura distrugge la creatura in campo (free). Le carte giocate
-  (ad eccezione delle creature giocate) possono essere subito dopo deallocate
-  (free). Ovviamente anche le creature, quando raggiungono 0 punti_vita, sono
-  eliminate dal campo (free).*/
+static void giocaCarta(struct Mago *nemico, struct Carta *campoGiocatore[], struct Carta *manoGiocatore[], struct Carta *campoNemico[], struct Carta *manoNemico[]){
+
   int n = 0;
 
+  printf("\nScegliere le carte da giocare\n");
+  stampaMano(manoGiocatore);
+  printf("Gli indici delle carte in mano vanno da 0 a 5\nSelezionare la posizione della carta nella mano: ");
+  scanf("%d", &n);
 
-    printf("Scegliere le carte da mettere in campo\n");
-    printf("Gli indici delle carte in mano vanno da 0 a 5\nSelezionare la posizione della carta nella mano: %d\n");
-    scanf("%d\n", &n);
+  switch (manoGiocatore[n]->tipo){
+    case 0:
+      giocaCreatura(campoGiocatore, manoGiocatore, n);
+      stampaCampo(campoGiocatore);
+      break;
 
-    struct Carta *sceltaCarta = mano[n];
+    case 1:
+      rimuoviCreatura(campoNemico);
+      break;
 
-    switch (mano[n].tipo) {
-      case 0: //creatura
-        giocaCreatura(campo, mano, sceltaCarta);
-        printf("carta tolta dalla mano %p\n", mano[n]);
-        break;
+    case 2:
+      infliggiDanno(campoNemico, &nemico, manoGiocatore[n]->punti_vita);
+      printf("punti vita aggiornati nemico %d\n", nemico->PV);
+      break;
 
-      case 1: //rimuovi_creatura
-        //rimuovi;
-        break;
+    case 3: //cura_danno
+      //guarisci;
+      break;
+  }
 
-      case 2: //infliggi_danno
-        //infliggi;
-        break;
-
-      case 3: //cura_danno
-        //guarisci;
-        break;
-    }
+  manoGiocatore[n] = NULL;
 }
 
-static void giocaCreatura(struct Carta campo[], struct Carta mano[], struct Carta *sceltaCarta){
+static void giocaCreatura(struct Carta *campo[], struct Carta *mano[], int n){
 
-  for(int j = 0; j < 4; j++){
-    if(campo[j] == 0){
-      campo[j].tipo = sceltaCarta->tipo;
-      campo[j].punti_vita = sceltaCarta->punti_vita;
-
-      free(sceltaCarta);
-      sceltaCarta = NULL;
+  for(int i = 0; i < 4; i++){
+    if(campo[i] == NULL){
+      campo[i] = mano[n];
 
       break;
     }
   }
 }
 
-static void stampaCampo(struct Carta campo[]){
+static void rimuoviCreatura(struct Carta *campo[]){
+  int rimuovi = 0;
+
+  struct Carta *rimuovicreatura = NULL;
+
+  printf("Gli indici delle carte vanno da 0 a 3\n");
+  printf("Si scelga quale carta si vuole rimuovere dal campo nemico\n");
+  scanf("%d", &rimuovi);
+
+  if(campo[rimuovi] == NULL){
+    printf("La posizione della carta scelta non è sul campo\n");
+  }else{
+    campo[rimuovi] = rimuovicreatura;
+
+    free(rimuovicreatura);
+    campo[rimuovi] = NULL; //per indicare che quello slot è libero
+  }
+}
+
+static void infliggiDanno(struct Carta *campo[], struct Mago *giocatore, int puntiVita){
+  int infliggi = 0, scelta = 0;
+  printf("Punti vita %d\n", puntiVita);
+  printf("punti vita giocatore %d\n", giocatore->PV);
+
+  printf("Si scelga se:\n");
+  printf("'1' Si vuole infliggere danno ai punti vita del mago\n ");
+  printf("'2' Si vuole infliggere danno alle creature\n");
+  printf("Scelta: ");
+  scanf("%d", &infliggi);
+
+  switch (infliggi) {
+    case 1:
+      giocatore->PV = giocatore->PV - puntiVita;
+      if(giocatore->PV <= 0){
+        //termina_gioco();
+        return 0;
+      }
+      printf("punti vita aggiornati %d\n", giocatore->PV);
+      break;
+
+    case 2:
+    printf("Stampa in corso del campo nemico\n");
+    stampaCampo(campo);
+
+    printf("Gli indici delle carte vanno da 0 a 3\n");
+    printf("Si scelga la carta del campo nemico alla quale si vuole infliggere danno\n");
+    scanf("%d", &scelta);
+
+    campo[scelta]->punti_vita = campo[scelta]->punti_vita - puntiVita;
+
+    if(campo[scelta]->punti_vita <= 0){
+      free(campo[scelta]);
+      //per intendere che la carta nello slot non ha più punti ed è stata tolta dal campo
+      campo[scelta] = NULL;
+    }
+    break;
+
+    default:
+      printf("La scelta selezionata è errata\n");
+      break;
+  }
+}
+
+/*static void guarisciDanno(struct Carta campo[], struct Mago giocatore, struct Carta *sceltaCarta){
+  int guarisci = 0;
+
+  printf("Si scelga se:\n");
+  printf("'1' Si vuole guarire il danno sui punti vita del mago\n ");
+  printf("'2' se si vuole guarire il danno sulle creature\n");
+  printf("Scelta: %d");
+  scanf("%d\n", &guarisci);
+
+  switch (guarisci) {
+    case 1:
+      giocatore.PV = giocatore.PV + sceltaCarta->punti_vita;
+      break;
+
+    case 2:
+    int scelta = 0;
+
+    printf("Stampa in corso del proprio campo\n");
+    stampaCampo(campo);
+
+    printf("Gli indici delle carte vanno da 0 a 3\n");
+    printf("Si scelga la carta del proprio campo da curare\n");
+    scanf("%d\n", &scelta);
+
+    campo[scelta].punti_vita = campo[scelta].punti_vita + sceltaCarta->punti_vita;
+    break;
+  }
+}*/
+
+static void stampaCampo(struct Carta *campo[]){
   for(int j = 0; j < 4; j++){
-    if(campo[j] != 0){
-      printf("Tipo: ");
-      stampaTipo(campo[j].tipo);
-      printf("  Punti vita: %d\n",  campo[j].punti_vita);
+    if(campo[j] != NULL){
+      printf("%d", j);
+      printf("  Tipo: ");
+      stampaTipo(campo[j]->tipo);
+      printf("    Punti vita: %d\n",  campo[j]->punti_vita);
     }else{
       //metto uno spazio in più per far capire che manca una carta nello slot
       //che sto controllando
@@ -312,9 +403,8 @@ static void passa(){
 }
 
 void imposta_gioco(){
-  static struct Mago giocatore1;
+
   giocatore1.PV = 20;
-  static struct Mago giocatore2;
   giocatore2.PV = 20;
   int n;
 
@@ -368,40 +458,86 @@ void imposta_gioco(){
   creaMano(&mazzo1, mano1, ultimaCarta1);
   creaMano(&mazzo2, mano2, ultimaCarta2);
 
-  printf("\nStampa della mano del primo giocatore\n");
+  /*printf("\nStampa della mano del primo giocatore\n");
   stampaMano(mano1);
 
   printf("\nStampa della mano del secondo giocatore\n");
-  stampaMano(mano2);
-  //creaCampo(campo1);
-  //creaCampo(campo2);
+  stampaMano(mano2);*/
 }
 
 void combatti(){
-  int scelta = 0;
+  int turno = 0, scelta = 0;
 
-  printf("Cosa vuoi fare?\n '1' Per pescare una carta dal mazzo\n '2' Per giocare una carta\n");
-  printf("'3' Per attaccare\n '4' Per passare la tua mano\n La tua scelta: %d");
-  scanf("%d\n", &scelta);
+  while(1){
+    if(turno%2 == 0){
+      printf("\nTURNO GIOCATORE: %s", giocatore1.nome);
+      printf("    PUNTI VITA: %d\n", giocatore1.PV);
 
-  switch (scelta) {
-    case 1:
-      //pesca();
-      break;
+      printf("Stampa del campo del GIOCATORE\n");
+      stampaCampo(campo1);
+      printf("Stampa del campo del NEMICO\n");
+      stampaCampo(campo2);
 
-    case 2:
-      giocaCarta(campo1, mazzo1);
-      break;
+      printf("\nCosa vuoi fare?\n '1' Per pescare una carta dal mazzo\n '2' Per giocare una carta\n");
+      printf(" '3' Per attaccare\n '4' Per passare la tua mano\n La tua scelta: ");
+      scanf("%d", &scelta);
 
-    case 3:
-      //attaccare();
-      break;
+      switch (scelta) {
+        case 1:
+          //pesca();
+          break;
 
-    case 4:
-      //passa();
-      break;
+        case 2:
+          giocaCarta(&giocatore2, campo1, mano1, campo2, mano2);
+          break;
 
-    default:
-      printf("La scelta inserita non è nella lista\n");
+        case 3:
+          //attaccare();
+          break;
+
+        case 4:
+          //passa();
+          break;
+
+        default:
+          printf("La scelta inserita non è nella lista\n");
+      }
+    }else{
+      printf("\nTURNO GIOCATORE: %s", giocatore2.nome);
+      printf("    PUNTI VITA: %d\n", giocatore2.PV);
+
+      printf("Stampa del campo del GIOCATORE\n");
+      stampaCampo(campo2);
+      printf("Stampa del campo del NEMICO\n");
+      stampaCampo(campo1);
+
+      printf("\nCosa vuoi fare?\n '1' Per pescare una carta dal mazzo\n '2' Per giocare una carta\n");
+      printf(" '3' Per attaccare\n '4' Per passare la tua mano\n La tua scelta: ");
+      scanf("%d", &scelta);
+
+      switch (scelta) {
+        case 1:
+          //pesca();
+          break;
+
+        case 2:
+          giocaCarta(&giocatore1, campo2, mano2, campo1, mano1);
+          break;
+
+        case 3:
+          //attaccare();
+          break;
+
+        case 4:
+          //passa();
+          break;
+
+        default:
+          printf("La scelta inserita non è nella lista\n");
+      }
+    }
+    turno++;
   }
+
+
 }
