@@ -5,11 +5,11 @@
 
 int main(){
 
-    int scelta = 0;
+    int scelta = 0, turno = 0;
 
   do{
 
-    printf("Scegliere la funzione del gioco:\n 1) Imposta il gioco\n 2) Combatti \n 3) Termina gioco\nLa tua scelta e: ");
+    printf("\nScegliere la funzione del gioco:\n 1) Imposta il gioco\n 2) Combatti \n 3) Termina gioco\nLa tua scelta e: ");
     scanf("%d", &scelta);
 
     switch (scelta) {
