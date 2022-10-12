@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <time.h>
 #include "gamelib.h"
 
@@ -31,9 +32,9 @@ static void rimuoviCreatura(struct Carta *campo[]);
 static void infliggiDanno(struct Carta *campo[], struct Mago *giocatore, int puntiVita);
 static void guarisciDanno(struct Carta *campo[], struct Mago *giocatore, int puntiVita);
 static void stampaCampo(struct Carta *campo[]);
-static void sceltaCartaGiocatore(struct Carta *campo[]);
-static void controCreatura(struct Campo *campoGiocatore[], struct Carta *campoNemico[], int scelta);
-static void controMago(struct Mago *nemico, struct Carta *campo, int scelta, int noncarta);
+static void sceltaCarta(struct Carta *campo[], int utilizzo[]);
+static void controCreatura(struct Carta *campoGiocatore[], struct Carta *campoNemico[], int scelta, int utilizzo[]);
+static void controMago(struct Mago *nemico, struct Carta *campo[], int scelta, int utilizzo[]);
 static void attacca(struct Mago *nemico, struct Carta *campoGiocatore[], struct Carta *campoNemico[]);
 static void passa();
 
@@ -330,7 +331,6 @@ static void infliggiDanno(struct Carta *campo[], struct Mago *giocatore, int pun
         //termina_gioco();
         return 0;
       }
-      printf("punti vita aggiornati %d\n", (*giocatore).PV);
       break;
 
     case 2:
@@ -398,86 +398,87 @@ static void stampaCampo(struct Carta *campo[]){
   }
 }
 
-static void sceltaCarta(struct Carta *campo[]){
-  int scelta = 0;
-  int utilizzo[4] = {0};
+static void sceltaCarta(struct Carta *campo[], int utilizzo[]){
 
   for(int i = 0; i < 4; i++){
-    if(campoGiocatore[i] != NULL){
+    if(campo[i] != NULL){
       if(utilizzo[i] == 0){
         printf("%d", i);
         printf("  Tipo: ");
-        stampaTipo(campoGiocatore[i]->tipo);
-        printf("    Punti vita: %d\n",  campoGiocatore[i]->punti_vita);
+        stampaTipo(campo[i]->tipo);
+        printf("    Punti vita: %d\n",  campo[i]->punti_vita);
       }else{
         printf("%d", i);
         printf("  La creatura ha già attaccato\n");
       }
     }else{
+      utilizzo[i] = 0;
       printf("\n----\n");
     }
   }
-  printf("Carta scelta: ");
-  scanf("%d", &scelta);
 }
 
-static void controCreatura(struct Carta *campoGiocatore[], struct Carta *campoNemico[], int scelta, int *utilizzo){
-  int attacca = 0, noncarta = 0;;
+static void controCreatura(struct Carta *campoGiocatore[], struct Carta *campoNemico[], int scelta, int utilizzo[]){
+  int attacca = 0;
 
-  for(int j = 0; j < 4; j++){
-    if(campoNemico[j] != NULL){
-      printf("Quale carta si vuole attaccare nel campo nemico? \n");
-      stampaCampo(campoNemico);
-      printf("Carta nemica scelta:");
-      scanf("%d", &attacca);
+    printf("Quale carta si vuole attaccare nel campo nemico? \n");
+    stampaCampo(campoNemico);
+    printf("Carta nemica scelta:");
+    scanf("%d", &attacca);
 
-      campoNemico[attacca]->punti_vita -= campoGiocatore[scelta]->punti_vita;
-      (*utilizzo[scelta]) = 1;
+    campoNemico[attacca]->punti_vita -= campoGiocatore[scelta]->punti_vita;
+    utilizzo[scelta] = 1;
 
-      if(campoNemico[attacca]->punti_vita <= 0){
-        campoNemico[attacca] = NULL;
-      }
-      break;
-    }else{
-      noncarta++;
+    if(campoNemico[attacca]->punti_vita <= 0){
+      campoNemico[attacca] = NULL;
     }
-  }
 }
 
-static void controMago(struct Mago *nemico, struct Carta *campo, int scelta, int noncarta, int *utiliuzz){
-  if(noncarta == 4){
-    printf("Il nemico non ha creature in campo\n");
-    printf("Verrà attaccato il mago nemico\n");
+static void controMago(struct Mago *nemico, struct Carta *campo[], int scelta, int utilizzo[]){
 
-    (*nemico).PV -= campoGiocatore[scelta]->punti_vita;
+    (*nemico).PV -= campo[scelta]->punti_vita;
     utilizzo[scelta] = 1;
 
     if((*nemico).PV <= 0){
       //termina_gioco();
       return 0;
     }
-  }
 }
 
 static void attacca(struct Mago *nemico, struct Carta *campoGiocatore[], struct Carta *campoNemico[]){
-  int count = 0;
+  int count = 0, scelta = 0, noncarta;
+  int utilizzo[4] = {0};
   char risposta = 'y';
 
   while(count < 4){
-
+    noncarta = 0;
     //scelgo con quale creatura voglio attaccare il mio nemico
     printf("Con quale creatura si vuole attaccare? \n");
-    sceltaCarta(campoGiocatore, scelta);
+    sceltaCarta(campoGiocatore, utilizzo);
+    printf("Carta scelta: ");
+    scanf("%d", &scelta);
 
     //attacco la creatura nemica con la mia e controllo se non l'ho uccisa, altimenti la "dealloco" dal campo
-    controCreatura(campoGiocatore, campoNemico, scelta);
+    for(int i = 0; i < 4; i++){
+      if(campoNemico[i] != NULL){
+        controCreatura(campoGiocatore, campoNemico, scelta, utilizzo);
+        break;
+      }else{
+        noncarta++;
+      }
+    }
 
     //non essendoci carte in campo decido di poter far attacare la creatura al mago
-    controMago(&nemico, campoGiocatore, scelta, noncarta);
+    if(noncarta == 4){
+      printf("Il nemico non ha creature in campo\n");
+      printf("Verrà attaccato il mago nemico\n");
+
+      controMago(nemico, campoGiocatore, scelta, utilizzo);
+    }
 
     //nell'attacca posso giocare al massimo tanto quante carte ho a disposizione sul campo
     printf("Vuoi attaccare ancora?(y/n)");
-    scanf("%c", &risposta);
+    scanf(" %c", &risposta);
 
     if(risposta == 'n'){
       break;
@@ -505,13 +506,6 @@ void imposta_gioco(){
   scanf("%s", giocatore1.nome);
   printf("\nSi scelga la classe del mago.\n Tra cui:\n '0' per tenebre\n '1' per vita\n '2' per luce.\n Scelta: ");
   scanf("%d", &giocatore1.classe);
-  printf("\nSetting per il SECONDO giocatore\n");
-  printf("Il secondo giocatore scelga il proprio nome.\n Nome: ");
-  scanf("%s", giocatore2.nome);
-  printf("\nSi scelga la classe del mago.\n Tra cui:\n '0' per tenebre\n '1' per vita\n '2' per luce.\n Scelta: ");
-  scanf("%d", &giocatore2.classe);
-  printf("\nSi scelga la dimensione del mazzo con cui giocare.\n Tot. carte: ");
-  scanf("%d", &n);
 
   switch (giocatore1.classe) {
     case 0:
@@ -525,7 +519,17 @@ void imposta_gioco(){
     case 2:
       creaMazzoLuce(&mazzo1, n, ultimaCarta1);
       break;
+
+    default:
+      printf("Non esiste questa possibile scelta. ERRORE!!\n");
+      break;
   }
+
+  printf("\nSetting per il SECONDO giocatore\n");
+  printf("Il secondo giocatore scelga il proprio nome.\n Nome: ");
+  scanf("%s", giocatore2.nome);
+  printf("\nSi scelga la classe del mago.\n Tra cui:\n '0' per tenebre\n '1' per vita\n '2' per luce.\n Scelta: ");
+  scanf("%d", &giocatore2.classe);
 
   switch (giocatore2.classe) {
     case 0:
@@ -539,7 +543,14 @@ void imposta_gioco(){
     case 2:
       creaMazzoLuce(&mazzo2, n, ultimaCarta2);
       break;
+
+    default:
+      printf("Non esiste questa possibile scelta. ERRORE!!\n");
+      break;
   }
+
+  printf("\nSi scelga la dimensione del mazzo con cui giocare.\n Tot. carte: ");
+  scanf("%d", &n);
 
 //Da decidere se far vedere il mazzo oppure solamente la mano di ciascun giocatore
   /*printf("\nNome del giocatore: %s\n", giocatore1.nome);
@@ -559,8 +570,12 @@ void imposta_gioco(){
 
 void combatti(){
   int turno = 0, scelta = 0;
+  bool giocata;
 
   while(1){
+    int utilizzo[3] = {0};
+    giocata = true;
+
     if(turno%2 == 0){
       printf("\nTURNO GIOCATORE: %s", giocatore1.nome);
       printf("    PUNTI VITA: %d\n", giocatore1.PV);
@@ -570,29 +585,47 @@ void combatti(){
       printf("Stampa del campo del NEMICO\n");
       stampaCampo(campo2);
 
-      printf("\nCosa vuoi fare?\n '1' Per pescare una carta dal mazzo\n '2' Per giocare una carta\n");
-      printf(" '3' Per attaccare\n '4' Per passare la tua mano\n La tua scelta: ");
-      scanf("%d", &scelta);
+      while(giocata){
+        printf("\nCosa vuoi fare?\n '1' Per pescare una carta dal mazzo\n '2' Per giocare una carta\n");
+        printf(" '3' Per attaccare\n '4' Per passare la tua mano\n La tua scelta: ");
+        scanf("%d", &scelta);
 
-      switch (scelta) {
-        case 1:
-          pesca(&mazzo1, mano1, ultimaCarta1);
-          break;
+        switch (scelta) {
+          case 1:
+            if(utilizzo[scelta-1] == 0){
+              pesca(&mazzo1, mano1, ultimaCarta1);
+              utilizzo[scelta-1] = 1;
+            }else{
+              printf("funzione già effettuata\n");
+            }
+            break;
 
-        case 2:
-          giocaCarta(&giocatore1, &giocatore2, campo1, mano1, campo2);
-          break;
+          case 2:
+            if(utilizzo[scelta-1] == 0){
+              giocaCarta(&giocatore1, &giocatore2, campo1, mano1, campo2);
+              utilizzo[scelta-1] = 1;
+            }else{
+              printf("funzione già effettuata\n");
+            }
+            break;
 
-        case 3:
-          attacca(&giocatore2, campo1, campo2);
-          break;
+          case 3:
+            if(utilizzo[scelta-1] == 0){
+              attacca(&giocatore2, campo1, campo2);
+              utilizzo[scelta-1] = 1;
+            }else{
+              printf("funzione già effettuata\n");
+            }
+            break;
 
-        case 4:
-          passa();
-          break;
+          case 4:
+            passa();
+            giocata = false;
+            break;
 
-        default:
-          printf("La scelta inserita non è nella lista\n");
+          default:
+            printf("La scelta inserita non è nella lista\n");
+        }
       }
     }else{
       printf("\nTURNO GIOCATORE: %s", giocatore2.nome);
@@ -603,29 +636,47 @@ void combatti(){
       printf("Stampa del campo del NEMICO\n");
       stampaCampo(campo1);
 
-      printf("\nCosa vuoi fare?\n '1' Per pescare una carta dal mazzo\n '2' Per giocare una carta\n");
-      printf(" '3' Per attaccare\n '4' Per passare la tua mano\n La tua scelta: ");
-      scanf("%d", &scelta);
+      while(giocata){
+        printf("\nCosa vuoi fare?\n '1' Per pescare una carta dal mazzo\n '2' Per giocare una carta\n");
+        printf(" '3' Per attaccare\n '4' Per passare la tua mano\n La tua scelta: ");
+        scanf("%d", &scelta);
 
-      switch (scelta) {
-        case 1:
-          pesca(&mazzo2, mano2, ultimaCarta2);
-          break;
+        switch (scelta) {
+          case 1:
+            if(utilizzo[scelta-1] == 0){
+              pesca(&mazzo2, mano2, ultimaCarta2);
+              utilizzo[scelta-1] = 1;
+            }else{
+              printf("funzione già effettuata\n");
+            }
+            break;
 
-        case 2:
-          giocaCarta(&giocatore2, &giocatore1, campo2, mano2, campo1);
-          break;
+          case 2:
+            if(utilizzo[scelta-1] == 0){
+              giocaCarta(&giocatore2, &giocatore1, campo2, mano2, campo1);
+              utilizzo[scelta-1] = 1;
+            }else{
+              printf("funzione già effettuata\n");
+            }
+            break;
 
-        case 3:
-          attacca(&giocatore1, campo2, campo1);
-          break;
+          case 3:
+            if(utilizzo[scelta-1] == 0){
+              attacca(&giocatore1, campo2, campo1);
+              utilizzo[scelta-1] = 1;
+            }else{
+              printf("funzione già effettuata\n");
+            }
+            break;
 
-        case 4:
-          passa();
-          break;
+          case 4:
+            passa();
+            giocata = false;
+            break;
 
-        default:
-          printf("La scelta inserita non è nella lista\n");
+          default:
+            printf("La scelta inserita non è nella lista\n");
+        }
       }
     }
     turno++;
