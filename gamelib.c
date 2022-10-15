@@ -231,6 +231,10 @@ static void pesca(struct Carta **mazzo, struct Carta *mano[], struct Carta *ulti
 
   int pesca = 0;
 
+  if(*mazzo == NULL){
+    printf("Il mazzo ha terminato le carte\n");
+  }
+
   for(int i = 0; i < 6; i++){
     if(mano[i] == NULL){ //controllo con NULL perché una volta che gioco la
                         //carta, poi lo slot libero lo imposto a 'NULL'
@@ -263,26 +267,34 @@ static void giocaCarta(struct Mago *giocatore, struct Mago *nemico, struct Carta
   printf("Gli indici delle carte in mano vanno da 0 a 5\nSelezionare la posizione della carta nella mano: ");
   scanf("%d", &n);
 
-  switch (manoGiocatore[n]->tipo){
-    case 0:
-      giocaCreatura(campoGiocatore, manoGiocatore, n);
-      stampaCampo(campoGiocatore);
-      break;
+  if(manoGiocatore[n] == NULL){
+    printf("La carta scelta non è presente in mano\n");
+  }else{
+    switch (manoGiocatore[n]->tipo){
+      case 0:
+        giocaCreatura(campoGiocatore, manoGiocatore, n);
+        stampaCampo(campoGiocatore);
+        break;
 
-    case 1:
-      rimuoviCreatura(campoNemico);
-      break;
+      case 1:
+        if(campoNemico != NULL){
+          rimuoviCreatura(campoNemico);
+        }else{
+          printf("Non ci sono creature nel campo nemico\n");
+        }
+        break;
 
-    case 2:
-      infliggiDanno(campoNemico, nemico, manoGiocatore[n]->punti_vita);
-      break;
+      case 2:
+        infliggiDanno(campoNemico, nemico, manoGiocatore[n]->punti_vita);
+        break;
 
-    case 3:
-      guarisciDanno(campoGiocatore, giocatore, manoGiocatore[n]->punti_vita);
-      break;
+      case 3:
+        guarisciDanno(campoGiocatore, giocatore, manoGiocatore[n]->punti_vita);
+        break;
+    }
+
+    manoGiocatore[n] = NULL;
   }
-
-  manoGiocatore[n] = NULL;
 }
 
 static void giocaCreatura(struct Carta *campo[], struct Carta *mano[], int n){
@@ -359,27 +371,34 @@ static void infliggiDanno(struct Carta *campo[], struct Mago *giocatore, int pun
 static void guarisciDanno(struct Carta *campo[], struct Mago *giocatore, int puntiVita){
   int guarisci = 0, scelta = 0;
 
-  printf("Si scelga se:\n");
-  printf("'1' Si vuole guarire il danno sui punti vita del mago\n ");
-  printf("'2' se si vuole guarire il danno sulle creature\n");
-  printf("Scelta: ");
-  scanf("%d", &guarisci);
+  if(campo == NULL){
+    printf("Non ci sono carte in campo da poter curare\n");
+    printf("Si curerà il mago\n");
 
-  switch (guarisci) {
-    case 1:
-      (*giocatore).PV += puntiVita;
+    (*giocatore).PV += puntiVita;
+  }else{
+    printf("Si scelga se:\n");
+    printf("'1' Si vuole guarire il danno sui punti vita del mago\n ");
+    printf("'2' se si vuole guarire il danno sulle creature\n");
+    printf("Scelta: ");
+    scanf("%d", &guarisci);
+
+    switch (guarisci) {
+      case 1:
+        (*giocatore).PV += puntiVita;
+        break;
+
+      case 2:
+      printf("Stampa in corso del proprio campo\n");
+      stampaCampo(campo);
+
+      printf("Gli indici delle carte vanno da 0 a 3\n");
+      printf("Si scelga la carta del proprio campo da curare\n");
+      scanf("%d", &scelta);
+
+      campo[scelta]->punti_vita += puntiVita;
       break;
-
-    case 2:
-    printf("Stampa in corso del proprio campo\n");
-    stampaCampo(campo);
-
-    printf("Gli indici delle carte vanno da 0 a 3\n");
-    printf("Si scelga la carta del proprio campo da curare\n");
-    scanf("%d", &scelta);
-
-    campo[scelta]->punti_vita += puntiVita;
-    break;
+    }
   }
 }
 
@@ -476,6 +495,21 @@ static void attacca(struct Mago *nemico, struct Carta *campoGiocatore[], struct 
       controMago(nemico, campoGiocatore, scelta, utilizzo);
     }
 
+    //se ho già attaccato con tutte le carte, allora passo alla giocata successiva
+    //da modificare
+    bool uso = false;
+    for(int i = 0; i < 4; i++){
+      uso = false
+      if(utiluizzo[i] == 0){
+        uso = true;
+      }else{
+        break;
+      }
+    }
+
+    if(uso == true){
+      printf("Sono già state usate tutte le carte per poter attaccare il nemico\n");
+    }
     //nell'attacca posso giocare al massimo tanto quante carte ho a disposizione sul campo
     printf("Vuoi attaccare ancora?(y/n)");
     scanf(" %c", &risposta);
@@ -681,4 +715,26 @@ void combatti(){
     }
     turno++;
   }
+}
+
+void termina_gioco(){
+  printf("    __________________\n");
+  printf("  _|                  |_\n");
+  printf("_ \                      /_\n");
+  printf("\  \                    /  /\n");
+  printf(" \__\                  /__/\n");
+  printf("     \                /\n");
+  printf("      \              /\n");
+  printf("       \            /\n");
+  printf("        \          /\n");
+  printf("         \        /\n");
+  printf("          |      |\n");
+  printf("     _____|      |_____\n");
+  printf("     |                 |\n");
+  printf("     | Congratulazioni |\n");
+  printf("     |    hai vinto!   |\n");
+  printf("     |_________________|\n");
+
+  free(mazzo1);
+  free(mazzo2);
 }
