@@ -36,7 +36,24 @@ static void sceltaCarta(struct Carta *campo[], int utilizzo[]);
 static void controCreatura(struct Carta *campoGiocatore[], struct Carta *campoNemico[], int scelta, int utilizzo[]);
 static void controMago(struct Mago *nemico, struct Carta *campo[], int scelta, int utilizzo[]);
 static void attacca(struct Mago *nemico, struct Carta *campoGiocatore[], struct Carta *campoNemico[]);
+static void controlloCarte(struct Mago *giocatore, struct Mago *nemico);
 static void passa();
+
+void termina_gioco(){
+
+  while(mazzo1 != NULL){
+    struct Carta *sentinella = (*mazzo1).successivo;
+    free(mazzo1);
+    mazzo1 = sentinella;
+  }
+
+  while(mazzo2 != NULL){
+    struct Carta *sentinella = (*mazzo2).successivo;
+    free(mazzo2);
+    mazzo2 = sentinella;
+  }
+  exit(0);
+}
 
 static int probabilitaTipo(){
 
@@ -158,6 +175,7 @@ static void cancellaCarta(struct Carta **mazzo, struct Carta *ultimaCarta){
   if(*mazzo == NULL){
     printf("Non ci sono carte nel mazzo\n");
   }else{
+    stampaMazzo(mazzo);
     struct Carta *cartaPrev = NULL;
     struct Carta *cartaScan = *mazzo;
 
@@ -168,6 +186,12 @@ static void cancellaCarta(struct Carta **mazzo, struct Carta *ultimaCarta){
     //free(cartaScan->successivo);
     cartaScan->successivo = NULL;
     ultimaCarta = cartaScan;
+
+    if((*mazzo)->successivo == NULL){
+      printf("hello da mazzo di successivo\n");
+      ultimaCarta = NULL;
+      *mazzo = NULL;
+    }
     }
 }
 
@@ -233,28 +257,29 @@ static void pesca(struct Carta **mazzo, struct Carta *mano[], struct Carta *ulti
 
   if(*mazzo == NULL){
     printf("Il mazzo ha terminato le carte\n");
-  }
+    controlloCarte(&giocatore1, &giocatore2);
+  }else{
+    for(int i = 0; i < 6; i++){
+      if(mano[i] == NULL){ //controllo con NULL perché una volta che gioco la
+                          //carta, poi lo slot libero lo imposto a 'NULL'
+        struct Carta *sentinella = *mazzo;
 
-  for(int i = 0; i < 6; i++){
-    if(mano[i] == NULL){ //controllo con NULL perché una volta che gioco la
-                        //carta, poi lo slot libero lo imposto a 'NULL'
-      struct Carta *sentinella = *mazzo;
+        while((sentinella->successivo) != NULL){
+          sentinella = sentinella->successivo;
+          ultimaCarta = sentinella;
+        }
 
-      while((sentinella->successivo) != NULL){
-        sentinella = sentinella->successivo;
-        ultimaCarta = sentinella;
+        mano[i]= sentinella;
+
+        cancellaCarta(mazzo, ultimaCarta);
+        pesca = 1;
+        break;
       }
-
-      mano[i]= sentinella;
-
-      cancellaCarta(mazzo, ultimaCarta);
-      pesca = 1;
-      break;
     }
-  }
 
-  if(pesca == 0){
-    printf("Hai la mano piena, non puoi pescare altre carte\n");
+    if(pesca == 0){
+      printf("Hai la mano piena, non puoi pescare altre carte\n");
+    }
   }
 }
 
@@ -340,8 +365,7 @@ static void infliggiDanno(struct Carta *campo[], struct Mago *giocatore, int pun
     case 1:
       (*giocatore).PV -= puntiVita;
       if((*giocatore).PV <= 0){
-        //termina_gioco();
-        return 0;
+        controlloCarte(&giocatore1, &giocatore2);
       }
       break;
 
@@ -459,8 +483,7 @@ static void controMago(struct Mago *nemico, struct Carta *campo[], int scelta, i
     utilizzo[scelta] = 1;
 
     if((*nemico).PV <= 0){
-      //termina_gioco();
-      return 0;
+      controlloCarte(&giocatore1, &giocatore2);
     }
 }
 
@@ -499,8 +522,8 @@ static void attacca(struct Mago *nemico, struct Carta *campoGiocatore[], struct 
     //da modificare
     bool uso = false;
     for(int i = 0; i < 4; i++){
-      uso = false
-      if(utiluizzo[i] == 0){
+      uso = false;
+      if(utilizzo[i] == 0){
         uso = true;
       }else{
         break;
@@ -527,6 +550,23 @@ static void attacca(struct Mago *nemico, struct Carta *campoGiocatore[], struct 
   }
 }
 
+static void controlloCarte(struct Mago *giocatore, struct Mago *nemico){
+
+  if(giocatore->PV <= 0){
+    printf("Congratulazioni %s! Hai vinto la partita!!\n", nemico->nome);
+  }else if(nemico->PV <= 0){
+    printf("Congratulazioni %s! Hai vinto la partita!!\n", giocatore->nome);
+  }else if(giocatore->PV > nemico->PV){
+    printf("Congratulazioni %s! Hai vinto la partita!!\n", giocatore->nome);
+  }else if(giocatore->PV < nemico->PV){
+    printf("Congratulazioni %s! Hai vinto la partita!!\n", nemico->nome);
+  }else{
+    printf("I giocatori hanno stesso punteggio, quindi la partita si conclude con un pareggio!\n");
+  }
+
+  termina_gioco();
+}
+
 static void passa(){}
 
 void imposta_gioco(){
@@ -534,6 +574,9 @@ void imposta_gioco(){
   giocatore1.PV = 20;
   giocatore2.PV = 20;
   int n;
+
+  printf("\nSi scelga la dimensione del mazzo con cui giocare.\n Tot. carte: ");
+  scanf("%d", &n);
 
   printf("\nSetting per il PRIMO giocatore\n");
   printf("Il primo giocatore scelga il proprio nome.\n Nome: ");
@@ -583,14 +626,11 @@ void imposta_gioco(){
       break;
   }
 
-  printf("\nSi scelga la dimensione del mazzo con cui giocare.\n Tot. carte: ");
-  scanf("%d", &n);
-
 //Da decidere se far vedere il mazzo oppure solamente la mano di ciascun giocatore
-  /*printf("\nNome del giocatore: %s\n", giocatore1.nome);
+  printf("\nNome del giocatore: %s\n", giocatore1.nome);
   stampaMazzo(&mazzo1);
   printf("\nNome del giocatore: %s\n", giocatore2.nome);
-  stampaMazzo(&mazzo2);*/
+  stampaMazzo(&mazzo2);
 
   creaMano(&mazzo1, mano1, ultimaCarta1);
   creaMano(&mazzo2, mano2, ultimaCarta2);
@@ -715,26 +755,4 @@ void combatti(){
     }
     turno++;
   }
-}
-
-void termina_gioco(){
-  printf("    __________________\n");
-  printf("  _|                  |_\n");
-  printf("_ \                      /_\n");
-  printf("\  \                    /  /\n");
-  printf(" \__\                  /__/\n");
-  printf("     \                /\n");
-  printf("      \              /\n");
-  printf("       \            /\n");
-  printf("        \          /\n");
-  printf("         \        /\n");
-  printf("          |      |\n");
-  printf("     _____|      |_____\n");
-  printf("     |                 |\n");
-  printf("     | Congratulazioni |\n");
-  printf("     |    hai vinto!   |\n");
-  printf("     |_________________|\n");
-
-  free(mazzo1);
-  free(mazzo2);
 }
