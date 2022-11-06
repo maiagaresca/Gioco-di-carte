@@ -187,12 +187,12 @@ static void cancellaCarta(struct Carta **mazzo, struct Carta *ultimaCarta){
     cartaScan->successivo = NULL;
     ultimaCarta = cartaScan;
 
+    //se rimane una sola carta nel mazzo, posso cancellarla e quindi avrò che nel mazzo non ci sono più carte
     if((*mazzo)->successivo == NULL){
-      printf("hello da mazzo di successivo\n");
       ultimaCarta = NULL;
       *mazzo = NULL;
     }
-    }
+  }
 }
 
 static void stampaTipo(int valore){
@@ -519,7 +519,6 @@ static void attacca(struct Mago *nemico, struct Carta *campoGiocatore[], struct 
     }
 
     //se ho già attaccato con tutte le carte, allora passo alla giocata successiva
-    //da modificare
     bool uso = false;
     for(int i = 0; i < 4; i++){
       uso = false;
@@ -627,10 +626,10 @@ void imposta_gioco(){
   }
 
 //Da decidere se far vedere il mazzo oppure solamente la mano di ciascun giocatore
-  printf("\nNome del giocatore: %s\n", giocatore1.nome);
+  /*printf("\nNome del giocatore: %s\n", giocatore1.nome);
   stampaMazzo(&mazzo1);
   printf("\nNome del giocatore: %s\n", giocatore2.nome);
-  stampaMazzo(&mazzo2);
+  stampaMazzo(&mazzo2);*/
 
   creaMano(&mazzo1, mano1, ultimaCarta1);
   creaMano(&mazzo2, mano2, ultimaCarta2);
