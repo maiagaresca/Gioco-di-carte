@@ -22,7 +22,7 @@ int main(){
         break;
 
       case 3:
-        //termina_gioco();
+        termina_gioco();
         return 0;
         break;
 
