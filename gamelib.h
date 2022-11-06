@@ -4,7 +4,7 @@
 
 void imposta_gioco();
 void combatti();
-//termina_gioco();
+void termina_gioco();
 
 enum Classe_mago{
   tenebre,
